@@ -1,0 +1,45 @@
+from fastapi import APIRouter, HTTPException
+
+from app.schemas.auth import RegisterRequest, LoginRequest
+from app.services.auth_service import register_user, login_user, get_users
+
+router = APIRouter()
+
+
+@router.get("/")
+def auth_root():
+    return {"message": "Auth API funcionando con Supabase"}
+
+
+@router.post("/register")
+def register(data: RegisterRequest):
+    user = register_user(data.model_dump())
+
+    if not user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email ya registrado",
+        )
+
+    return {
+        "message": "Usuario creado correctamente",
+        "user": user,
+    }
+
+
+@router.post("/login")
+def login(data: LoginRequest):
+    result = login_user(data.email, data.password)
+
+    if not result:
+        raise HTTPException(
+            status_code=401,
+            detail="Credenciales inválidas",
+        )
+
+    return result
+
+
+@router.get("/users")
+def users():
+    return get_users()

@@ -1,38 +1,67 @@
-const STORAGE_KEY = "skillsync_saved_jobs";
+import { API_CONFIG } from "../config/apiConfig";
 
-export function getSavedJobs() {
-  const data = localStorage.getItem(STORAGE_KEY);
-  return data ? JSON.parse(data) : [];
-}
+export async function getSavedJobs() {
+  const response = await fetch(
+    `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.savedJobs}`
+  );
 
-export function isJobSaved(jobId) {
-  return getSavedJobs().some((job) => job.id === jobId);
-}
-
-export function saveJob(job) {
-  const savedJobs = getSavedJobs();
-
-  if (savedJobs.some((item) => item.id === job.id)) {
-    return savedJobs;
+  if (!response.ok) {
+    return [];
   }
 
-  const updatedJobs = [...savedJobs, job];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedJobs));
-
-  return updatedJobs;
+  return response.json();
 }
 
-export function removeSavedJob(jobId) {
-  const updatedJobs = getSavedJobs().filter((job) => job.id !== jobId);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedJobs));
+export async function saveJob(job) {
+  const response = await fetch(
+    `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.saveJob}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(job),
+    }
+  );
 
-  return updatedJobs;
-}
-
-export function toggleSavedJob(job) {
-  if (isJobSaved(job.id)) {
-    return removeSavedJob(job.id);
+  if (!response.ok) {
+    throw new Error("No se pudo guardar la oferta");
   }
 
-  return saveJob(job);
+  return response.json();
+}
+
+export async function removeSavedJob(jobId) {
+  const response = await fetch(
+    `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.deleteSavedJob}/${jobId}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("No se pudo eliminar la oferta");
+  }
+
+  return response.json();
+}
+
+export async function isJobSaved(jobId) {
+  const savedJobs = await getSavedJobs();
+  return savedJobs.some((job) => job.job_id === jobId || job.id === jobId);
+}
+
+export async function toggleSavedJob(job) {
+  const savedJobs = await getSavedJobs();
+  const exists = savedJobs.some(
+    (item) => item.job_id === job.id || item.id === job.id
+  );
+
+  if (exists) {
+    await removeSavedJob(job.id);
+  } else {
+    await saveJob(job);
+  }
+
+  return getSavedJobs();
 }

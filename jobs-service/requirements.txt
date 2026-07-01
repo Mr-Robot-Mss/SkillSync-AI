@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+supabase
+passlib[bcrypt]
+python-jose
+requests
+pytest
+pytest-cov
+httpx

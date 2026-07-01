@@ -20,11 +20,7 @@ import {
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 import { getChileTechJobs } from "../services/jobsService";
-import {
-  getSavedJobs,
-  isJobSaved,
-  toggleSavedJob,
-} from "../services/savedJobsService";
+import { getSavedJobs, isJobSaved, toggleSavedJob } from "../services/savedJobsService";
 
 const categories = ["Todos", "Frontend", "QA", "Data", "Soporte TI", "Fullstack"];
 const modalities = ["Todas", "Remoto", "Híbrido", "Presencial"];
@@ -43,13 +39,22 @@ export default function MarketPulse() {
   const [region, setRegion] = useState("Todas");
   const [selectedJob, setSelectedJob] = useState(null);
 
+  const savedJobIds = useMemo(
+    () => savedJobs.map((job) => job.job_id || job.id),
+    [savedJobs]
+  );
+
   useEffect(() => {
     async function loadJobs() {
       try {
         setLoading(true);
-        const data = await getChileTechJobs();
-        setJobs(data);
-        setSavedJobs(getSavedJobs());
+        const [jobsData, savedData] = await Promise.all([
+          getChileTechJobs(),
+          getSavedJobs(),
+        ]);
+
+        setJobs(jobsData);
+        setSavedJobs(savedData);
       } finally {
         setLoading(false);
       }
@@ -60,7 +65,8 @@ export default function MarketPulse() {
 
   const filteredJobs = useMemo(() => {
     return jobs.filter((job) => {
-      const text = `${job.title} ${job.company} ${job.skills.join(" ")}`.toLowerCase();
+      const skillsText = Array.isArray(job.skills) ? job.skills.join(" ") : "";
+      const text = `${job.title} ${job.company} ${skillsText}`.toLowerCase();
 
       return (
         text.includes(search.toLowerCase()) &&
@@ -74,7 +80,7 @@ export default function MarketPulse() {
 
   const avgMatch =
     jobs.length > 0
-      ? Math.round(jobs.reduce((sum, job) => sum + job.match, 0) / jobs.length)
+      ? Math.round(jobs.reduce((sum, job) => sum + Number(job.match || 0), 0) / jobs.length)
       : 0;
 
   const resetFilters = () => {
@@ -85,9 +91,13 @@ export default function MarketPulse() {
     setRegion("Todas");
   };
 
-  const handleToggleSaved = (job) => {
-    const updated = toggleSavedJob(job);
+  const handleToggleSaved = async (job) => {
+    const updated = await toggleSavedJob(job);
     setSavedJobs(updated);
+  };
+
+  const isSaved = (jobId) => {
+    return savedJobIds.includes(jobId);
   };
 
   return (
@@ -104,10 +114,10 @@ export default function MarketPulse() {
           <HeroJobs total={filteredJobs.length} avgMatch={avgMatch} />
 
           <section className="mt-6 grid gap-6 md:grid-cols-4">
-            <KpiCard icon={BriefcaseBusiness} label="Ofertas cargadas" value={jobs.length} detail="Servicio frontend activo" />
+            <KpiCard icon={BriefcaseBusiness} label="Ofertas cargadas" value={jobs.length} detail="API Gateway activo" />
             <KpiCard icon={TrendingUp} label="Match promedio" value={`${avgMatch}%`} detail="Compatibilidad IA" />
-            <KpiCard icon={BookmarkCheck} label="Guardadas" value={savedJobs.length} detail="Favoritos locales" />
-            <KpiCard icon={Wifi} label="Estado API" value="Ready" detail="Backend conectable" />
+            <KpiCard icon={BookmarkCheck} label="Guardadas" value={savedJobs.length} detail="Persistencia Supabase" />
+            <KpiCard icon={Wifi} label="Estado API" value="Ready" detail="BFF conectado" />
           </section>
 
           <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_360px]">
@@ -133,7 +143,7 @@ export default function MarketPulse() {
 
                 <p className="flex items-center gap-2 text-sm font-bold text-zinc-400">
                   <Clock size={15} />
-                  {loading ? "Conectando servicio..." : "Actualizado hace 2 min"}
+                  {loading ? "Conectando servicio..." : "Datos desde API Gateway"}
                 </p>
               </div>
 
@@ -145,7 +155,7 @@ export default function MarketPulse() {
                     <JobCard
                       key={job.id}
                       job={job}
-                      saved={isJobSaved(job.id)}
+                      saved={isSaved(job.id)}
                       onSave={() => handleToggleSaved(job)}
                       onSelect={() => setSelectedJob(job)}
                     />
@@ -169,7 +179,7 @@ export default function MarketPulse() {
       {selectedJob && (
         <JobDetailModal
           job={selectedJob}
-          saved={isJobSaved(selectedJob.id)}
+          saved={isSaved(selectedJob.id)}
           onSave={() => handleToggleSaved(selectedJob)}
           onClose={() => setSelectedJob(null)}
         />
@@ -196,7 +206,7 @@ function HeroJobs({ total, avgMatch }) {
 
           <p className="mt-4 max-w-2xl text-sm font-medium leading-7 text-zinc-300">
             Ofertas laborales de informática, desarrollo, QA, datos y soporte TI.
-            La interfaz ya está preparada para conectar APIs laborales reales.
+            La interfaz consume datos reales mediante API Gateway, microservicios y Supabase.
           </p>
         </div>
 
@@ -218,13 +228,8 @@ function KpiCard({ icon: Icon, label, value, detail }) {
       <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-black text-[#ffd500]">
         <Icon size={24} />
       </div>
-
-      <p className="text-sm font-black uppercase tracking-wide text-zinc-500">
-        {label}
-      </p>
-
+      <p className="text-sm font-black uppercase tracking-wide text-zinc-500">{label}</p>
       <p className="mt-2 text-4xl font-black">{value}</p>
-
       <p className="mt-2 text-sm font-bold text-zinc-500">{detail}</p>
     </section>
   );
@@ -251,27 +256,19 @@ function SearchAndFilters({
             <SlidersHorizontal size={20} />
             Filtros de búsqueda
           </h2>
-
           <p className="mt-1 text-sm font-bold text-zinc-500">
             Busca empleos por cargo, categoría, modalidad, región y seniority.
           </p>
         </div>
 
-        <button
-          onClick={resetFilters}
-          className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-black transition hover:border-[#ffd500]"
-        >
+        <button onClick={resetFilters} className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-black transition hover:border-[#ffd500]">
           <RefreshCcw size={16} />
           Limpiar
         </button>
       </div>
 
       <div className="relative">
-        <Search
-          size={18}
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
-        />
-
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -308,10 +305,7 @@ function SearchAndFilters({
 function SelectFilter({ label, value, onChange, options }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-zinc-500">
-        {label}
-      </span>
-
+      <span className="mb-2 block text-xs font-black uppercase tracking-wide text-zinc-500">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -326,6 +320,8 @@ function SelectFilter({ label, value, onChange, options }) {
 }
 
 function JobCard({ job, saved, onSave, onSelect }) {
+  const skills = Array.isArray(job.skills) ? job.skills : [];
+
   return (
     <article className="glass-card rounded-[28px] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_70px_rgba(0,0,0,0.10)]">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -337,7 +333,6 @@ function JobCard({ job, saved, onSave, onSelect }) {
           <div>
             <h2 className="text-xl font-black">{job.title}</h2>
             <p className="mt-1 text-sm font-bold text-zinc-500">{job.company}</p>
-
             <p className="mt-3 flex items-center gap-2 text-sm font-bold text-zinc-500">
               <MapPin size={16} />
               {job.location} · {job.modality}
@@ -365,11 +360,8 @@ function JobCard({ job, saved, onSave, onSelect }) {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {job.skills.map((skill) => (
-          <span
-            key={skill}
-            className="rounded-full bg-white px-3 py-1 text-xs font-black shadow-sm"
-          >
+        {skills.map((skill) => (
+          <span key={skill} className="rounded-full bg-white px-3 py-1 text-xs font-black shadow-sm">
             {skill}
           </span>
         ))}
@@ -383,10 +375,7 @@ function JobCard({ job, saved, onSave, onSelect }) {
           </p>
         </div>
 
-        <button
-          onClick={onSelect}
-          className="flex items-center gap-2 rounded-2xl bg-[#ffd500] px-5 py-3 text-sm font-black text-black transition hover:scale-[1.03]"
-        >
+        <button onClick={onSelect} className="flex items-center gap-2 rounded-2xl bg-[#ffd500] px-5 py-3 text-sm font-black text-black transition hover:scale-[1.03]">
           Ver detalle
           <ExternalLink size={16} />
         </button>
@@ -396,6 +385,8 @@ function JobCard({ job, saved, onSave, onSelect }) {
 }
 
 function JobDetailModal({ job, saved, onSave, onClose }) {
+  const requirements = Array.isArray(job.requirements) ? job.requirements : [];
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-6 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[32px] bg-white p-7 shadow-2xl">
@@ -408,10 +399,7 @@ function JobDetailModal({ job, saved, onSave, onClose }) {
             </p>
           </div>
 
-          <button
-            onClick={onClose}
-            className="rounded-2xl bg-zinc-100 p-3 transition hover:bg-zinc-200"
-          >
+          <button onClick={onClose} className="rounded-2xl bg-zinc-100 p-3 transition hover:bg-zinc-200">
             <X size={20} />
           </button>
         </div>
@@ -432,24 +420,24 @@ function JobDetailModal({ job, saved, onSave, onClose }) {
 
         <div className="mt-6">
           <h3 className="text-lg font-black">Descripción</h3>
-          <p className="mt-2 text-sm font-medium leading-7 text-zinc-600">
-            {job.description}
-          </p>
+          <p className="mt-2 text-sm font-medium leading-7 text-zinc-600">{job.description}</p>
         </div>
 
         <div className="mt-6">
           <h3 className="text-lg font-black">Requisitos principales</h3>
-
           <div className="mt-4 space-y-3">
-            {job.requirements.map((req) => (
-              <div
-                key={req}
-                className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4"
-              >
-                <CheckCircle2 className="text-green-500" size={20} />
-                <p className="text-sm font-bold text-zinc-700">{req}</p>
-              </div>
-            ))}
+            {requirements.length > 0 ? (
+              requirements.map((req) => (
+                <div key={req} className="flex items-center gap-3 rounded-2xl bg-zinc-50 p-4">
+                  <CheckCircle2 className="text-green-500" size={20} />
+                  <p className="text-sm font-bold text-zinc-700">{req}</p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm font-bold text-zinc-500">
+                Esta oferta no informa requisitos específicos.
+              </p>
+            )}
           </div>
         </div>
 
@@ -463,16 +451,20 @@ function JobDetailModal({ job, saved, onSave, onClose }) {
             {saved ? "Oferta guardada" : "Guardar oferta"}
           </button>
 
-          <button
-            onClick={onClose}
-            className="rounded-2xl border border-zinc-200 px-5 py-3 text-sm font-black"
-          >
+          <button onClick={onClose} className="rounded-2xl border border-zinc-200 px-5 py-3 text-sm font-black">
             Cerrar
           </button>
 
-          <button className="rounded-2xl bg-[#ffd500] px-5 py-3 text-sm font-black text-black">
-            Ir a la oferta
-          </button>
+          {job.url && (
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-2xl bg-[#ffd500] px-5 py-3 text-sm font-black text-black"
+            >
+              Ir a la oferta
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -485,7 +477,7 @@ function LoadingState() {
       <div className="mx-auto h-16 w-16 animate-pulse rounded-2xl bg-black" />
       <h2 className="mt-5 text-2xl font-black">Cargando ofertas</h2>
       <p className="mx-auto mt-2 max-w-md text-sm font-bold leading-6 text-zinc-500">
-        Consultando el servicio frontend de oportunidades laborales.
+        Consultando API Gateway y microservicio de empleos.
       </p>
     </section>
   );
@@ -504,10 +496,7 @@ function EmptyState({ resetFilters }) {
         Prueba limpiando filtros o buscando por otra tecnología, cargo o empresa.
       </p>
 
-      <button
-        onClick={resetFilters}
-        className="mt-6 rounded-2xl bg-[#ffd500] px-5 py-3 text-sm font-black text-black"
-      >
+      <button onClick={resetFilters} className="mt-6 rounded-2xl bg-[#ffd500] px-5 py-3 text-sm font-black text-black">
         Limpiar filtros
       </button>
     </section>
@@ -515,13 +504,11 @@ function EmptyState({ resetFilters }) {
 }
 
 function MarketStats({ jobs }) {
-  const totalByCategory = (category) =>
-    jobs.filter((job) => job.category === category).length;
+  const totalByCategory = (category) => jobs.filter((job) => job.category === category).length;
 
   return (
     <section className="glass-card rounded-[28px] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
       <h2 className="text-lg font-black">Resumen mercado</h2>
-
       <div className="mt-5 space-y-4">
         <Stat label="Frontend" value={`${totalByCategory("Frontend")} ofertas`} />
         <Stat label="QA / Testing" value={`${totalByCategory("QA")} ofertas`} />
@@ -536,19 +523,14 @@ function SavedJobsPanel({ savedJobs }) {
   return (
     <section className="glass-card rounded-[28px] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
       <h2 className="text-lg font-black">Ofertas guardadas</h2>
-
       <div className="mt-5 space-y-3">
         {savedJobs.length === 0 ? (
-          <p className="text-sm font-bold text-zinc-500">
-            Aún no tienes ofertas guardadas.
-          </p>
+          <p className="text-sm font-bold text-zinc-500">Aún no tienes ofertas guardadas.</p>
         ) : (
           savedJobs.slice(0, 3).map((job) => (
             <div key={job.id} className="rounded-2xl bg-white p-4">
               <p className="text-sm font-black">{job.title}</p>
-              <p className="mt-1 text-xs font-bold text-zinc-500">
-                {job.company}
-              </p>
+              <p className="mt-1 text-xs font-bold text-zinc-500">{job.company}</p>
             </div>
           ))
         )}
@@ -559,36 +541,33 @@ function SavedJobsPanel({ savedJobs }) {
 
 function SkillDemand({ jobs }) {
   const skills = jobs
-    .flatMap((job) => job.skills)
+    .flatMap((job) => (Array.isArray(job.skills) ? job.skills : []))
     .reduce((acc, skill) => {
       acc[skill] = (acc[skill] || 0) + 1;
       return acc;
     }, {});
 
-  const topSkills = Object.entries(skills)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6);
+  const topSkills = Object.entries(skills).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
   return (
     <section className="glass-card rounded-[28px] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
       <h2 className="text-lg font-black">Skills más demandadas</h2>
-
       <div className="mt-5 space-y-4">
-        {topSkills.map(([skill, count]) => (
-          <div key={skill}>
-            <div className="mb-2 flex justify-between text-sm font-black">
-              <span>{skill}</span>
-              <span>{count}</span>
+        {topSkills.length === 0 ? (
+          <p className="text-sm font-bold text-zinc-500">Sin skills informadas.</p>
+        ) : (
+          topSkills.map(([skill, count]) => (
+            <div key={skill}>
+              <div className="mb-2 flex justify-between text-sm font-black">
+                <span>{skill}</span>
+                <span>{count}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-zinc-200">
+                <div className="h-full rounded-full bg-[#ffd500]" style={{ width: `${Math.min(count * 25, 100)}%` }} />
+              </div>
             </div>
-
-            <div className="h-2 overflow-hidden rounded-full bg-zinc-200">
-              <div
-                className="h-full rounded-full bg-[#ffd500]"
-                style={{ width: `${Math.min(count * 25, 100)}%` }}
-              />
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </section>
   );
@@ -601,15 +580,15 @@ function ApiStatus() {
         <BarChart3 size={24} />
       </div>
 
-      <h2 className="text-xl font-black">Preparado para APIs reales</h2>
+      <h2 className="text-xl font-black">API Gateway activo</h2>
 
       <p className="mt-3 text-sm font-medium leading-6 text-zinc-300">
-        Próxima fase backend: jobsService.js será reemplazado por llamadas
-        reales a /api/jobs/chile-tech.
+        El frontend consume el BFF en localhost:8000, que centraliza la comunicación
+        con Jobs Service y Supabase.
       </p>
 
       <div className="mt-5 rounded-2xl bg-white/10 p-4">
-        <p className="text-xs font-bold text-zinc-400">Endpoint futuro</p>
+        <p className="text-xs font-bold text-zinc-400">Endpoint activo</p>
         <p className="mt-1 text-sm font-black text-[#ffd500]">
           GET /api/jobs/chile-tech
         </p>

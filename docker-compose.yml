@@ -1,0 +1,63 @@
+services:
+  auth-service:
+    build: ./auth-service
+    container_name: skillsync-auth
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./auth-service/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+
+  profile-service:
+    build: ./profile-service
+    container_name: skillsync-profile
+    ports:
+      - "8002:8002"
+    env_file:
+      - ./profile-service/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+
+  jobs-service:
+    build: ./jobs-service
+    container_name: skillsync-jobs
+    ports:
+      - "8003:8003"
+    env_file:
+      - ./jobs-service/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload
+
+  career-ai-service:
+    build: ./career-ai-service
+    container_name: skillsync-career-ai
+    ports:
+      - "8004:8004"
+    env_file:
+      - ./career-ai-service/.env
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8004 --reload
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: skillsync-gateway
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./api-gateway/.env
+    depends_on:
+      - auth-service
+      - profile-service
+      - jobs-service
+      - career-ai-service
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build: ./frontend
+    container_name: skillsync-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8000/api
+    depends_on:
+      - api-gateway

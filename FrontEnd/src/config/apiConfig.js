@@ -1,17 +1,20 @@
 export const API_CONFIG = {
-  baseUrl: import.meta.env.VITE_API_URL || "http://localhost:8080/api",
+  baseUrl: import.meta.env.VITE_API_URL || "http://localhost:8000/api",
 
   endpoints: {
     chileTechJobs: "/jobs/chile-tech",
-    jobDetail: "/jobs",
-    profileMatch: "/ai/profile-match",
-  },
+    recommendedJobs: "/jobs/recommended",
+    syncJobs: "/jobs/sync",
 
-  sources: {
-    getOnBoard: "Get on Board",
-    chiletrabajos: "Chiletrabajos",
-    laborum: "Laborum",
-    trabajando: "Trabajando.cl",
-    linkedin: "LinkedIn Jobs",
+    savedJobs: "/saved-jobs/all",
+    saveJob: "/saved-jobs/save",
+    deleteSavedJob: "/saved-jobs",
+
+    onboardingAnalyze: "/onboarding/analyze",
+    assistant: "/ai/assistant",
+    roadmap: "/roadmap/my-roadmap",
+    interviewQuestion: "/interview/question",
+    interviewEvaluate: "/interview/evaluate",
+    cvAnalyze: "/cv/analyze",
   },
 };
