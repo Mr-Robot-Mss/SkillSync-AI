@@ -77,7 +77,7 @@ function HeroProfile() {
         <div className="flex flex-col items-center">
           <div className="relative">
             <img
-              src="https://i.pravatar.cc/220?img=47"
+              src="https://i.pinimg.com/474x/38/9b/64/389b64d1d5a28245f81fecafc883ca25.jpg"
               alt="profile"
               className="h-40 w-40 rounded-full border-4 border-white object-cover shadow-2xl"
             />
