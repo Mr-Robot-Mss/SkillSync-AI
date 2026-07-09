@@ -1,7 +1,6 @@
 from app.core.supabase_client import supabase
 from app.adapters.getonboard_adapter import fetch_getonboard_jobs
 
-
 DEFAULT_USER_ID = "demo-user"
 JOBS_TABLE = "resultados_de_carrera"
 SAVED_JOBS_TABLE = "trabajos_guardados"
@@ -14,28 +13,49 @@ def sync_external_jobs():
         return {
             "message": "No se obtuvieron ofertas externas. Se mantiene caché actual.",
             "synced": 0,
+            "source": "Get on Board",
         }
 
     synced = 0
+    skipped = 0
+    errors = []
 
     for job in external_jobs:
-        exists = (
-            supabase
-            .table(JOBS_TABLE)
-            .select("*")
-            .eq("external_id", job.get("external_id"))
-            .execute()
-        )
+        external_id = job.get("external_id")
 
-        if exists.data:
+        if not external_id:
+            skipped += 1
             continue
 
-        supabase.table(JOBS_TABLE).insert(job).execute()
-        synced += 1
+        try:
+            exists = (
+                supabase
+                .table(JOBS_TABLE)
+                .select("id")
+                .eq("external_id", external_id)
+                .limit(1)
+                .execute()
+            )
+
+            if exists.data:
+                skipped += 1
+                continue
+
+            supabase.table(JOBS_TABLE).insert(job).execute()
+            synced += 1
+
+        except Exception as error:
+            errors.append({
+                "external_id": external_id,
+                "error": str(error),
+            })
 
     return {
         "message": "Sincronización finalizada",
+        "source": "Get on Board",
         "synced": synced,
+        "skipped": skipped,
+        "errors": errors,
     }
 
 
@@ -84,6 +104,7 @@ def get_recommended_jobs(primary_role: str = "Data Analyst"):
 
     return {
         "profile_role": primary_role,
+        "total": len(recommended),
         "jobs": recommended,
     }
 
@@ -103,9 +124,10 @@ def save_job(job):
     exists = (
         supabase
         .table(SAVED_JOBS_TABLE)
-        .select("*")
+        .select("id")
         .eq("user_id", DEFAULT_USER_ID)
         .eq("job_id", payload["job_id"])
+        .limit(1)
         .execute()
     )
 

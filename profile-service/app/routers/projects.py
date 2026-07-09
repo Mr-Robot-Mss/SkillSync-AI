@@ -1,24 +1,12 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
+
+from app.schemas.profile import ProjectRequest
+from app.services.profile_service import (
+    get_projects,
+    create_project,
+)
 
 router = APIRouter()
-
-PROJECTS = [
-    {
-        "id": 1,
-        "title": "SkillSync AI",
-        "description": "Plataforma de empleabilidad con IA, onboarding, jobs y roadmap.",
-        "technologies": ["React", "FastAPI", "Python", "Tailwind"],
-        "type": "Fullstack",
-    }
-]
-
-
-class ProjectRequest(BaseModel):
-    title: str
-    description: str
-    technologies: list[str]
-    type: str
 
 
 @router.get("/")
@@ -27,20 +15,13 @@ def projects_root():
 
 
 @router.get("/all")
-def get_projects():
-    return PROJECTS
+def projects_all():
+    return get_projects()
 
 
 @router.post("/")
-def create_project(data: ProjectRequest):
-    project = {
-        "id": len(PROJECTS) + 1,
-        **data.model_dump(),
-    }
-
-    PROJECTS.append(project)
-
+def projects_create(data: ProjectRequest):
     return {
         "message": "Proyecto creado correctamente",
-        "project": project,
+        "project": create_project(data.model_dump()),
     }

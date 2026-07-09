@@ -1,6 +1,15 @@
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { logoutUser } from "../services/authService";
 
 export default function AppTopbar({ title, subtitle }) {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logoutUser();
+    navigate("/login");
+  };
+
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-white/70 backdrop-blur-xl">
       <div className="flex items-center justify-between px-8 py-5">
@@ -30,7 +39,6 @@ export default function AppTopbar({ title, subtitle }) {
 
           <button className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-zinc-200 bg-white transition hover:border-[#ffd500] hover:bg-[#ffd500]/10">
             <Bell size={20} />
-
             <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-red-500" />
           </button>
 
@@ -47,10 +55,18 @@ export default function AppTopbar({ title, subtitle }) {
               </p>
 
               <p className="text-xs font-bold text-zinc-500">
-                Estudiante
+                Estudiante DUOC UC
               </p>
             </div>
           </div>
+
+          <button
+            onClick={handleLogout}
+            className="flex h-12 items-center gap-2 rounded-2xl bg-black px-5 text-sm font-black text-[#ffd500] transition hover:scale-105"
+          >
+            <LogOut size={18} />
+            Salir
+          </button>
         </div>
       </div>
     </header>

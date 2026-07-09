@@ -13,9 +13,7 @@ def ai_root():
 
 @router.post("/assistant")
 def assistant(data: AssistantRequest):
-    return {
-        "response": ask_assistant(data.message),
-    }
+    return ask_assistant(data.user_id, data.message)
 
 
 @router.get("/skill-gap")

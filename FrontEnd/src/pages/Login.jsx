@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Sparkles,
   Mail,
@@ -6,19 +6,49 @@ import {
   GraduationCap,
   ShieldCheck,
   Globe2,
+  Lock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getCurrentUser, loginUser } from "../services/authService";
 
 export default function Login() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("xd@duocuc.cl");
-  const [password, setPassword] = useState("123456");
 
-  const handleLogin = (e) => {
+  const [email, setEmail] = useState("mass.navarrete@duocuc.cl");
+  const [password, setPassword] = useState("123456");
+  const [rememberSession, setRememberSession] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const user = getCurrentUser();
+
+    if (user) {
+      const hasOnboarding = localStorage.getItem("skillsync_onboarding_result");
+      navigate(hasOnboarding ? "/profile" : "/onboarding");
+    }
+  }, [navigate]);
+
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    const hasOnboarding = localStorage.getItem("skillsync_onboarding_result");
-    navigate(hasOnboarding ? "/profile" : "/onboarding");
+    try {
+      setLoading(true);
+      setError("");
+
+      if (!email.toLowerCase().endsWith("@duocuc.cl")) {
+        throw new Error("Debes ingresar con tu correo institucional @duocuc.cl");
+      }
+
+      await loginUser(email, password, rememberSession);
+
+      const hasOnboarding = localStorage.getItem("skillsync_onboarding_result");
+      navigate(hasOnboarding ? "/profile" : "/onboarding");
+    } catch (err) {
+      setError(err.message || "No se pudo iniciar sesión");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -100,9 +130,15 @@ export default function Login() {
               </h2>
 
               <p className="mt-4 text-center text-sm font-bold leading-6 text-zinc-500">
-                Selecciona el acceso según el tipo de usuario del sistema.
+                Inicio de sesión restringido a correos institucionales Duoc UC.
               </p>
             </div>
+
+            {error && (
+              <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600">
+                {error}
+              </div>
+            )}
 
             <label className="block">
               <span className="mb-2 block text-xs font-black uppercase tracking-wide text-zinc-700">
@@ -131,7 +167,7 @@ export default function Login() {
               </span>
 
               <div className="relative">
-                <Mail
+                <Lock
                   size={18}
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400"
                 />
@@ -147,20 +183,25 @@ export default function Login() {
 
             <div className="mt-5 flex items-center justify-between text-xs font-bold text-zinc-600">
               <label className="flex items-center gap-2">
-                <input type="checkbox" />
-                Recordarme
+                <input
+                  type="checkbox"
+                  checked={rememberSession}
+                  onChange={(e) => setRememberSession(e.target.checked)}
+                />
+                Mantener sesión iniciada
               </label>
 
               <button type="button" className="font-black text-black">
-                Recuperar acceso
+                Cambiar contraseña
               </button>
             </div>
 
             <button
               type="submit"
-              className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black text-sm font-black text-[#ffd500] transition hover:scale-[1.02]"
+              disabled={loading}
+              className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black text-sm font-black text-[#ffd500] transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Entrar como estudiante
+              {loading ? "Validando acceso..." : "Entrar como estudiante"}
               <ArrowRight size={18} />
             </button>
 

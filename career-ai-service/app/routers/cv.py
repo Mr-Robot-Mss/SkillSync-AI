@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.schemas.career import CVAnalysisRequest
-from app.services.career_ai_service import analyze_cv
+from app.schemas.career import CVAnalysisRequest, CVOptimizeRequest
+from app.services.career_ai_service import analyze_cv_advanced, optimize_cv_for_job
 from app.data.career_store import CAREER_PROFILE
 
 router = APIRouter()
@@ -14,7 +14,24 @@ def cv_root():
 
 @router.post("/analyze")
 def cv_analyze(data: CVAnalysisRequest):
-    return analyze_cv(data.role, data.skills, data.projects)
+    return analyze_cv_advanced(
+        data.user_id,
+        data.role,
+        data.cv_text,
+        data.job_description,
+        data.skills,
+        data.projects,
+    )
+
+
+@router.post("/optimize")
+def cv_optimize(data: CVOptimizeRequest):
+    return optimize_cv_for_job(
+        data.user_id,
+        data.role,
+        data.cv_text,
+        data.job_description,
+    )
 
 
 @router.get("/template")

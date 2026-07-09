@@ -19,30 +19,44 @@ import Notifications from "./pages/Notifications";
 import OnboardingAI from "./pages/OnboardingAI";
 
 import AIFloatingAssistant from "./components/AIFloatingAssistant";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import "./App.css";
+
+function PrivatePage({ children }) {
+  return (
+    <ProtectedRoute>
+      {children}
+    </ProtectedRoute>
+  );
+}
 
 export default function App() {
   return (
     <BrowserRouter>
       <div className="noise relative min-h-screen overflow-hidden bg-[#f5f5f3]">
         <Routes>
+          {/* Públicas */}
           <Route path="/" element={<Login />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/onboarding" element={<OnboardingAI />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/profile" element={<StudentProfile />} />
-          <Route path="/market" element={<MarketPulse />} />
-          <Route path="/saved-jobs" element={<SavedJobs />} />
-          <Route path="/ai-tools" element={<AITools />} />
-          <Route path="/skill-gap" element={<SkillGap />} />
-          <Route path="/cv-builder" element={<CVBuilder />} />
-          <Route path="/analytics" element={<Analytics />} />
-          <Route path="/interview-simulator" element={<InterviewSimulator />} />
-          <Route path="/career-roadmap" element={<CareerRoadmap />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+
+          {/* Privadas */}
+          <Route path="/home" element={<PrivatePage><Home /></PrivatePage>} />
+          <Route path="/onboarding" element={<PrivatePage><OnboardingAI /></PrivatePage>} />
+          <Route path="/dashboard" element={<PrivatePage><Dashboard /></PrivatePage>} />
+          <Route path="/profile" element={<PrivatePage><StudentProfile /></PrivatePage>} />
+          <Route path="/market" element={<PrivatePage><MarketPulse /></PrivatePage>} />
+          <Route path="/saved-jobs" element={<PrivatePage><SavedJobs /></PrivatePage>} />
+          <Route path="/ai-tools" element={<PrivatePage><AITools /></PrivatePage>} />
+          <Route path="/skill-gap" element={<PrivatePage><SkillGap /></PrivatePage>} />
+          <Route path="/cv-builder" element={<PrivatePage><CVBuilder /></PrivatePage>} />
+          <Route path="/analytics" element={<PrivatePage><Analytics /></PrivatePage>} />
+          <Route path="/interview-simulator" element={<PrivatePage><InterviewSimulator /></PrivatePage>} />
+          <Route path="/career-roadmap" element={<PrivatePage><CareerRoadmap /></PrivatePage>} />
+          <Route path="/settings" element={<PrivatePage><Settings /></PrivatePage>} />
+          <Route path="/notifications" element={<PrivatePage><Notifications /></PrivatePage>} />
+          <Route path="/admin" element={<PrivatePage><AdminDashboard /></PrivatePage>} />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
 

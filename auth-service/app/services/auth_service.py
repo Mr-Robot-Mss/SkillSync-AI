@@ -1,12 +1,25 @@
 from app.core.supabase_client import supabase
 from app.core.security import hash_password, verify_password, create_access_token
 
+INSTITUTIONAL_DOMAIN = "@duocuc.cl"
+
+
+def is_institutional_email(email: str) -> bool:
+    return email.lower().endswith(INSTITUTIONAL_DOMAIN)
+
 
 def register_user(data: dict):
+    email = data["email"].lower()
+
+    if not is_institutional_email(email):
+        return {
+            "error": "Solo se permiten correos institucionales @duocuc.cl"
+        }
+
     existing = (
         supabase.table("users")
         .select("*")
-        .eq("email", data["email"])
+        .eq("email", email)
         .execute()
     )
 
@@ -15,7 +28,7 @@ def register_user(data: dict):
 
     user_payload = {
         "name": data["name"],
-        "email": data["email"],
+        "email": email,
         "password_hash": hash_password(data["password"]),
         "role": "student",
     }
@@ -37,6 +50,11 @@ def register_user(data: dict):
 
 
 def login_user(email: str, password: str):
+    email = email.lower()
+
+    if not is_institutional_email(email):
+        return None
+
     result = (
         supabase.table("users")
         .select("*")
@@ -69,6 +87,39 @@ def login_user(email: str, password: str):
             "email": user["email"],
             "role": user["role"],
         },
+    }
+
+
+def change_password(email: str, current_password: str, new_password: str):
+    email = email.lower()
+
+    if not is_institutional_email(email):
+        return {
+            "error": "Solo se permiten correos institucionales @duocuc.cl"
+        }
+
+    result = (
+        supabase.table("users")
+        .select("*")
+        .eq("email", email)
+        .execute()
+    )
+
+    if not result.data:
+        return None
+
+    user = result.data[0]
+
+    if not verify_password(current_password, user["password_hash"]):
+        return None
+
+    supabase.table("users").update({
+        "password_hash": hash_password(new_password)
+    }).eq("email", email).execute()
+
+    return {
+        "message": "Contraseña actualizada correctamente",
+        "email": email,
     }
 
 

@@ -10,6 +10,7 @@ class OnboardingRequest(BaseModel):
 
 
 class AssistantRequest(BaseModel):
+    user_id: str = "demo-user"
     message: str
 
 
@@ -23,6 +24,16 @@ class InterviewEvaluationRequest(BaseModel):
 
 
 class CVAnalysisRequest(BaseModel):
+    user_id: str = "demo-user"
     role: str
+    cv_text: str = ""
+    job_description: str = ""
     skills: list[str] = []
     projects: list[str] = []
+
+
+class CVOptimizeRequest(BaseModel):
+    user_id: str = "demo-user"
+    role: str
+    cv_text: str
+    job_description: str

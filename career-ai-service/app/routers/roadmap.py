@@ -1,6 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
-from app.services.career_ai_service import get_roadmap
+from app.services.roadmap_engine import generate_career_roadmap
 
 router = APIRouter()
 
@@ -11,5 +11,5 @@ def roadmap_root():
 
 
 @router.get("/my-roadmap")
-def my_roadmap():
-    return get_roadmap()
+def my_roadmap(user_id: str = Query(default="demo-user")):
+    return generate_career_roadmap(user_id)

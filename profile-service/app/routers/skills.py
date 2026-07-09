@@ -1,15 +1,13 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
 
-from app.data.profile_store import PROFILE
+from app.schemas.profile import SkillRequest
+from app.services.profile_service import (
+    get_skills,
+    add_skill,
+    delete_skill,
+)
 
 router = APIRouter()
-
-USER_SKILLS = ["SQL", "Python", "Power BI", "Postman", "Testing"]
-
-
-class SkillRequest(BaseModel):
-    skill: str
 
 
 @router.get("/")
@@ -19,29 +17,20 @@ def skills_root():
 
 @router.get("/me")
 def get_my_skills():
-    return {
-        "primary_role": PROFILE.get("primary_role", "Data Analyst"),
-        "skills": USER_SKILLS,
-    }
+    return get_skills()
 
 
 @router.post("/")
-def add_skill(data: SkillRequest):
-    if data.skill not in USER_SKILLS:
-        USER_SKILLS.append(data.skill)
-
+def create_skill(data: SkillRequest):
     return {
         "message": "Skill agregada correctamente",
-        "skills": USER_SKILLS,
+        "skills": add_skill(data.skill),
     }
 
 
 @router.delete("/{skill}")
-def delete_skill(skill: str):
-    if skill in USER_SKILLS:
-        USER_SKILLS.remove(skill)
-
+def remove_skill(skill: str):
     return {
         "message": "Skill eliminada correctamente",
-        "skills": USER_SKILLS,
+        "skills": delete_skill(skill),
     }

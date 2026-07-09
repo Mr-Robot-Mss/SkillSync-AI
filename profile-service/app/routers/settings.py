@@ -1,27 +1,12 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
+
+from app.schemas.profile import SettingsUpdateRequest
+from app.services.profile_service import (
+    get_settings,
+    update_settings,
+)
 
 router = APIRouter()
-
-USER_SETTINGS = {
-    "name": "Estudiante Demo",
-    "email": "estudiante@duocuc.cl",
-    "city": "Santiago, Chile",
-    "career": "Analista Programador",
-    "linkedin": "",
-    "github": "",
-    "theme": "light",
-}
-
-
-class SettingsUpdateRequest(BaseModel):
-    name: str
-    email: str
-    city: str
-    career: str
-    linkedin: str = ""
-    github: str = ""
-    theme: str = "light"
 
 
 @router.get("/")
@@ -30,15 +15,13 @@ def settings_root():
 
 
 @router.get("/me")
-def get_settings():
-    return USER_SETTINGS
+def settings_me():
+    return get_settings()
 
 
 @router.put("/me")
-def update_settings(data: SettingsUpdateRequest):
-    USER_SETTINGS.update(data.model_dump())
-
+def settings_update(data: SettingsUpdateRequest):
     return {
         "message": "Configuración actualizada correctamente",
-        "settings": USER_SETTINGS,
+        "settings": update_settings(data.model_dump()),
     }
