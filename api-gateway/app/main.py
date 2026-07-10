@@ -8,15 +8,26 @@ from app.routers import gateway
 app = FastAPI(
     title="SkillSync API Gateway",
     version="1.0.0",
-    description="BFF encargado de centralizar la comunicación entre el frontend y los microservicios.",
+    description=(
+        "BFF encargado de centralizar la comunicación "
+        "entre el frontend y los microservicios."
+    ),
 )
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+if settings.frontend_url:
+    origin = settings.frontend_url.rstrip("/")
+
+    if origin not in allowed_origins:
+        allowed_origins.append(origin)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.frontend_url,
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,6 +54,7 @@ def health():
     return {
         "status": "OK",
         "service": "api-gateway",
+        "allowed_origins": allowed_origins,
         "microservices": {
             "auth": settings.auth_service_url,
             "profile": settings.profile_service_url,

@@ -2,35 +2,44 @@ from fastapi import APIRouter
 
 from app.schemas.profile import SkillRequest
 from app.services.profile_service import (
-    get_skills,
     add_skill,
     delete_skill,
+    get_skills,
 )
+
 
 router = APIRouter()
 
 
-@router.get("/")
-def skills_root():
-    return {"message": "Skills API funcionando"}
+@router.get("/{user_id}")
+def user_skills(user_id: str):
+    return get_skills(user_id)
 
 
-@router.get("/me")
-def get_my_skills():
-    return get_skills()
-
-
-@router.post("/")
-def create_skill(data: SkillRequest):
+@router.post("/{user_id}")
+def create_user_skill(
+    user_id: str,
+    data: SkillRequest,
+):
     return {
-        "message": "Skill agregada correctamente",
-        "skills": add_skill(data.skill),
+        "message": "Habilidad agregada correctamente",
+        "skills": add_skill(
+            user_id,
+            data.skill,
+            data.level,
+        ),
     }
 
 
-@router.delete("/{skill}")
-def remove_skill(skill: str):
+@router.delete("/{user_id}/{skill}")
+def remove_user_skill(
+    user_id: str,
+    skill: str,
+):
     return {
-        "message": "Skill eliminada correctamente",
-        "skills": delete_skill(skill),
+        "message": "Habilidad eliminada correctamente",
+        "skills": delete_skill(
+            user_id,
+            skill,
+        ),
     }

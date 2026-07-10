@@ -6,22 +6,24 @@ from app.services.profile_service import (
     update_settings,
 )
 
+
 router = APIRouter()
 
 
-@router.get("/")
-def settings_root():
-    return {"message": "Settings API funcionando"}
+@router.get("/{user_id}")
+def user_settings(user_id: str):
+    return get_settings(user_id)
 
 
-@router.get("/me")
-def settings_me():
-    return get_settings()
-
-
-@router.put("/me")
-def settings_update(data: SettingsUpdateRequest):
+@router.put("/{user_id}")
+def update_user_settings(
+    user_id: str,
+    data: SettingsUpdateRequest,
+):
     return {
         "message": "Configuración actualizada correctamente",
-        "settings": update_settings(data.model_dump()),
+        "settings": update_settings(
+            user_id,
+            data.model_dump(),
+        ),
     }

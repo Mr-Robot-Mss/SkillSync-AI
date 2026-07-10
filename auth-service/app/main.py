@@ -1,21 +1,30 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.supabase_client import supabase
 
 from app.core.config import settings
 from app.routers import auth
 
+
 app = FastAPI(
     title="SkillSync Auth Service",
     version="1.0.0",
+    description="Autenticación institucional para SkillSync-AI.",
 )
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+if settings.frontend_url:
+    origin = settings.frontend_url.rstrip("/")
+
+    if origin not in allowed_origins:
+        allowed_origins.append(origin)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.frontend_url,
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -42,8 +51,3 @@ def health():
         "status": "OK",
         "service": "auth-service",
     }
-
-@app.get("/test-supabase")
-def test_supabase():
-    response = supabase.table("users").select("*").limit(5).execute()
-    return response.data

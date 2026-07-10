@@ -4,8 +4,8 @@ import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
 
 export default function Settings() {
-  const [name, setName] = useState("Camila Rojas");
-  const [email, setEmail] = useState("camila.rojas@duocuc.cl");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [city, setCity] = useState("Santiago, Chile");
 
   return (

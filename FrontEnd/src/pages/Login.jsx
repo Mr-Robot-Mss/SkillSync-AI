@@ -9,13 +9,17 @@ import {
   Lock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { getCurrentUser, loginUser } from "../services/authService";
+
+import {
+  getCurrentUser,
+  loginUser,
+} from "../services/authService";
 
 export default function Login() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("mass.navarrete@duocuc.cl");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [rememberSession, setRememberSession] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -23,29 +27,71 @@ export default function Login() {
   useEffect(() => {
     const user = getCurrentUser();
 
-    if (user) {
-      const hasOnboarding = localStorage.getItem("skillsync_onboarding_result");
-      navigate(hasOnboarding ? "/profile" : "/onboarding");
+    if (!user) {
+      return;
     }
+
+    const hasOnboarding =
+      localStorage.getItem("skillsync_onboarding_result") ||
+      sessionStorage.getItem("skillsync_onboarding_result");
+
+    navigate(hasOnboarding ? "/dashboard" : "/onboarding", {
+      replace: true,
+    });
   }, [navigate]);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (event) => {
+    event.preventDefault();
 
     try {
       setLoading(true);
       setError("");
 
-      if (!email.toLowerCase().endsWith("@duocuc.cl")) {
-        throw new Error("Debes ingresar con tu correo institucional @duocuc.cl");
+      const normalizedEmail = email.trim().toLowerCase();
+
+      if (!normalizedEmail) {
+        throw new Error("Ingresa tu correo institucional.");
       }
 
-      await loginUser(email, password, rememberSession);
+      if (!normalizedEmail.endsWith("@duocuc.cl")) {
+        throw new Error(
+          "Debes ingresar con un correo institucional @duocuc.cl."
+        );
+      }
 
-      const hasOnboarding = localStorage.getItem("skillsync_onboarding_result");
-      navigate(hasOnboarding ? "/profile" : "/onboarding");
+      if (!password) {
+        throw new Error("Ingresa tu contraseña.");
+      }
+
+      if (password.length < 6) {
+        throw new Error(
+          "La contraseña debe tener al menos 6 caracteres."
+        );
+      }
+
+      const result = await loginUser(
+        normalizedEmail,
+        password,
+        rememberSession
+      );
+
+      if (result.first_login) {
+        navigate("/onboarding", { replace: true });
+        return;
+      }
+
+      const hasOnboarding =
+        localStorage.getItem("skillsync_onboarding_result") ||
+        sessionStorage.getItem("skillsync_onboarding_result");
+
+      navigate(hasOnboarding ? "/dashboard" : "/onboarding", {
+        replace: true,
+      });
     } catch (err) {
-      setError(err.message || "No se pudo iniciar sesión");
+      setError(
+        err.message ||
+          "No se pudo iniciar sesión. Verifica tus datos e inténtalo nuevamente."
+      );
     } finally {
       setLoading(false);
     }
@@ -55,8 +101,8 @@ export default function Login() {
     <main className="relative min-h-screen overflow-hidden bg-black text-white">
       <img
         src="/duoc-campus.jpg"
-        alt="Duoc UC"
-        className="absolute inset-0 z-0 h-full w-full object-cover object-center opacity-100"
+        alt="Campus Duoc UC"
+        className="absolute inset-0 z-0 h-full w-full object-cover object-center"
       />
 
       <div className="absolute inset-0 z-[1] bg-black/35" />
@@ -130,12 +176,16 @@ export default function Login() {
               </h2>
 
               <p className="mt-4 text-center text-sm font-bold leading-6 text-zinc-500">
-                Inicio de sesión restringido a correos institucionales Duoc UC.
+                Ingresa con tu correo institucional Duoc UC. En el primer acceso
+                se creará automáticamente tu cuenta.
               </p>
             </div>
 
             {error && (
-              <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600">
+              <div
+                role="alert"
+                className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold leading-6 text-red-600"
+              >
                 {error}
               </div>
             )}
@@ -153,10 +203,14 @@ export default function Login() {
 
                 <input
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(event) => setEmail(event.target.value)}
                   type="email"
-                  placeholder="nombre@duocuc.cl"
-                  className="h-14 w-full rounded-2xl border border-zinc-200 bg-white pl-12 pr-4 text-sm font-bold outline-none transition focus:border-[#ffd500]"
+                  name="email"
+                  autoComplete="email"
+                  placeholder="nombre.apellido@duocuc.cl"
+                  required
+                  disabled={loading}
+                  className="h-14 w-full rounded-2xl border border-zinc-200 bg-white pl-12 pr-4 text-sm font-bold outline-none transition focus:border-[#ffd500] disabled:cursor-not-allowed disabled:bg-zinc-100"
                 />
               </div>
             </label>
@@ -174,24 +228,38 @@ export default function Login() {
 
                 <input
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(event) => setPassword(event.target.value)}
                   type="password"
-                  className="h-14 w-full rounded-2xl border border-zinc-200 bg-white pl-12 pr-4 text-sm font-bold outline-none transition focus:border-[#ffd500]"
+                  name="password"
+                  autoComplete="current-password"
+                  placeholder="Ingresa tu contraseña"
+                  required
+                  minLength={6}
+                  disabled={loading}
+                  className="h-14 w-full rounded-2xl border border-zinc-200 bg-white pl-12 pr-4 text-sm font-bold outline-none transition focus:border-[#ffd500] disabled:cursor-not-allowed disabled:bg-zinc-100"
                 />
               </div>
             </label>
 
-            <div className="mt-5 flex items-center justify-between text-xs font-bold text-zinc-600">
-              <label className="flex items-center gap-2">
+            <div className="mt-5 flex items-center justify-between gap-4 text-xs font-bold text-zinc-600">
+              <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
                   checked={rememberSession}
-                  onChange={(e) => setRememberSession(e.target.checked)}
+                  onChange={(event) =>
+                    setRememberSession(event.target.checked)
+                  }
+                  disabled={loading}
+                  className="h-4 w-4 accent-black"
                 />
                 Mantener sesión iniciada
               </label>
 
-              <button type="button" className="font-black text-black">
+              <button
+                type="button"
+                onClick={() => navigate("/settings")}
+                className="font-black text-black transition hover:text-[#c59b00]"
+              >
                 Cambiar contraseña
               </button>
             </div>
@@ -202,8 +270,14 @@ export default function Login() {
               className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-black text-sm font-black text-[#ffd500] transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Validando acceso..." : "Entrar como estudiante"}
-              <ArrowRight size={18} />
+              {!loading && <ArrowRight size={18} />}
             </button>
+
+            <p className="mt-4 text-center text-xs font-semibold leading-5 text-zinc-500">
+              Si tu correo todavía no está registrado, se creará una cuenta en
+              el primer inicio de sesión. La contraseña se almacena protegida
+              mediante hash.
+            </p>
 
             <div className="mt-7 grid grid-cols-3 gap-3">
               <AccessCard
@@ -211,14 +285,26 @@ export default function Login() {
                 title="Estudiante"
                 sub="Career DNA"
               />
-              <AccessCard icon={ShieldCheck} title="Admin" sub="Duoc IA" />
-              <AccessCard icon={Globe2} title="Market" sub="Pulse AI" />
+              <AccessCard
+                icon={ShieldCheck}
+                title="Admin"
+                sub="Duoc IA"
+              />
+              <AccessCard
+                icon={Globe2}
+                title="Market"
+                sub="Pulse AI"
+              />
             </div>
           </form>
         </div>
       </section>
 
-      <button className="fixed bottom-6 right-6 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-black text-[#ffd500] shadow-2xl">
+      <button
+        type="button"
+        aria-label="Abrir asistente SkillSync AI"
+        className="fixed bottom-6 right-6 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-black text-[#ffd500] shadow-2xl"
+      >
         <Sparkles size={24} />
       </button>
     </main>

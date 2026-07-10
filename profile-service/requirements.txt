@@ -1,10 +1,7 @@
 fastapi
 uvicorn
-pydantic
-python-dotenv
 supabase
-passlib[bcrypt]
-python-jose
-pytest
-pytest-cov
-httpx
+python-dotenv
+pydantic
+python-multipart>=0.0.9
+email-validator>=2.2.0
