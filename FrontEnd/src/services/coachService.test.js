@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildCoachPayload, getCoachHistory } from "./coachService";
+import {
+  buildCoachPayload,
+  getCoachGoal,
+  getCoachHistory,
+  saveCoachGoal,
+} from "./coachService";
 
 function createStorage() {
   const values = new Map();
@@ -54,6 +59,41 @@ describe("coachService", () => {
     expect(history).toEqual([{ career_score: 72 }]);
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining("/coach/history?user_id=25&limit=6"),
+    );
+  });
+
+  it("devuelve null cuando el usuario todavía no tiene una meta", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ status: 404, ok: false }),
+    );
+
+    await expect(getCoachGoal("25")).resolves.toBeNull();
+  });
+
+  it("envía una meta normalizada al gateway", async () => {
+    localStorage.setItem("skillsync_user", JSON.stringify({ id: 25 }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ goal: { title: "Conseguir empleo", progress: 35 } }),
+      }),
+    );
+
+    const result = await saveCoachGoal({
+      title: "  Conseguir empleo  ",
+      progress: "35",
+      status: "active",
+    });
+
+    expect(result.progress).toBe(35);
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/coach/goal"),
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.stringContaining('"user_id":"25"'),
+      }),
     );
   });
 });
