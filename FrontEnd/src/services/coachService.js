@@ -2,7 +2,6 @@ const API_GATEWAY_URL = import.meta.env.VITE_API_URL || "/api";
 
 function readJsonStorage(key) {
   const raw = localStorage.getItem(key) || sessionStorage.getItem(key);
-
   if (!raw) return null;
 
   try {
@@ -20,7 +19,7 @@ function normalizeSkills(value) {
     .filter(Boolean);
 }
 
-function getUserId() {
+export function getCoachUserId() {
   const user = readJsonStorage("skillsync_user") || {};
   return String(user.id || user.user_id || "demo-user");
 }
@@ -46,7 +45,7 @@ export function buildCoachPayload() {
   );
 
   return {
-    user_id: getUserId(),
+    user_id: getCoachUserId(),
     profile: {
       completion_percentage: Number(profile.completion_percentage || 65),
       target_role:
@@ -72,9 +71,7 @@ export function buildCoachPayload() {
 export async function getCoachSummary(payload = buildCoachPayload()) {
   const response = await fetch(`${API_GATEWAY_URL}/coach/summary`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
@@ -87,12 +84,11 @@ export async function getCoachSummary(payload = buildCoachPayload()) {
   return response.json();
 }
 
-export async function getCoachHistory({ userId = getUserId(), limit = 12 } = {}) {
+export async function getCoachHistory({ userId = getCoachUserId(), limit = 12 } = {}) {
   const params = new URLSearchParams({
     user_id: String(userId),
     limit: String(limit),
   });
-
   const response = await fetch(`${API_GATEWAY_URL}/coach/history?${params}`);
 
   if (!response.ok) {
@@ -103,4 +99,46 @@ export async function getCoachHistory({ userId = getUserId(), limit = 12 } = {})
 
   const data = await response.json();
   return Array.isArray(data) ? data : data?.items || data?.history || [];
+}
+
+export async function getCoachGoal(userId = getCoachUserId()) {
+  const params = new URLSearchParams({ user_id: String(userId) });
+  const response = await fetch(`${API_GATEWAY_URL}/coach/goal?${params}`);
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(response, "No se pudo cargar la meta profesional"),
+    );
+  }
+
+  const data = await response.json();
+  return data?.goal ?? data;
+}
+
+export async function saveCoachGoal(goal) {
+  const payload = {
+    user_id: goal.user_id || getCoachUserId(),
+    title: String(goal.title || "").trim(),
+    description: String(goal.description || "").trim(),
+    target_date: goal.target_date || null,
+    progress: Number(goal.progress || 0),
+    status: goal.status || "active",
+  };
+
+  const response = await fetch(`${API_GATEWAY_URL}/coach/goal`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(response, "No se pudo guardar la meta profesional"),
+    );
+  }
+
+  const data = await response.json();
+  return data?.goal ?? data;
 }
