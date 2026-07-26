@@ -1,13 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import subscriptions
 
 from app.core.config import settings
-from app.routers import onboarding, ai, roadmap, interview, cv
+from app.routers import ai, coach, cv, interview, onboarding, roadmap, subscriptions
+
 
 app = FastAPI(
     title="SkillSync Career AI Service",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 app.add_middleware(
@@ -26,7 +26,7 @@ app.include_router(ai.router, prefix="/api/ai", tags=["AI Assistant"])
 app.include_router(roadmap.router, prefix="/api/roadmap", tags=["Roadmap"])
 app.include_router(interview.router, prefix="/api/interview", tags=["Interview"])
 app.include_router(cv.router, prefix="/api/cv", tags=["CV Builder"])
-
+app.include_router(coach.router, prefix="/api/coach", tags=["AI Career Coach"])
 app.include_router(
     subscriptions.router,
     prefix="/api/subscriptions",

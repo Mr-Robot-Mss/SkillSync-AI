@@ -2,12 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import gateway
+from app.routers import coach, gateway
 
 
 app = FastAPI(
     title="SkillSync API Gateway",
-    version="1.0.0",
+    version="1.1.0",
     description=(
         "BFF encargado de centralizar la comunicación "
         "entre el frontend y los microservicios."
@@ -37,6 +37,11 @@ app.include_router(
     gateway.router,
     prefix="/api",
     tags=["API Gateway"],
+)
+app.include_router(
+    coach.router,
+    prefix="/api/coach",
+    tags=["AI Career Coach"],
 )
 
 
