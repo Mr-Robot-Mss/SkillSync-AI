@@ -20,8 +20,21 @@ function normalizeSkills(value) {
     .filter(Boolean);
 }
 
-export function buildCoachPayload() {
+function getUserId() {
   const user = readJsonStorage("skillsync_user") || {};
+  return String(user.id || user.user_id || "demo-user");
+}
+
+async function parseApiError(response, fallbackMessage) {
+  try {
+    const error = await response.json();
+    return error.detail || fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
+}
+
+export function buildCoachPayload() {
   const onboarding = readJsonStorage("skillsync_onboarding_result") || {};
   const profile = readJsonStorage("skillsync_profile") || {};
 
@@ -33,7 +46,7 @@ export function buildCoachPayload() {
   );
 
   return {
-    user_id: String(user.id || user.user_id || "demo-user"),
+    user_id: getUserId(),
     profile: {
       completion_percentage: Number(profile.completion_percentage || 65),
       target_role:
@@ -66,17 +79,28 @@ export async function getCoachSummary(payload = buildCoachPayload()) {
   });
 
   if (!response.ok) {
-    let detail = "No se pudo cargar el AI Career Coach";
-
-    try {
-      const error = await response.json();
-      detail = error.detail || detail;
-    } catch {
-      // Conserva el mensaje predeterminado cuando la respuesta no es JSON.
-    }
-
-    throw new Error(detail);
+    throw new Error(
+      await parseApiError(response, "No se pudo cargar el AI Career Coach"),
+    );
   }
 
   return response.json();
+}
+
+export async function getCoachHistory({ userId = getUserId(), limit = 12 } = {}) {
+  const params = new URLSearchParams({
+    user_id: String(userId),
+    limit: String(limit),
+  });
+
+  const response = await fetch(`${API_GATEWAY_URL}/coach/history?${params}`);
+
+  if (!response.ok) {
+    throw new Error(
+      await parseApiError(response, "No se pudo cargar el historial del Career Score"),
+    );
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : data?.items || data?.history || [];
 }
