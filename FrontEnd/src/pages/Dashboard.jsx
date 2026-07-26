@@ -23,6 +23,7 @@ import {
 
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
+import CoachGoalCard from "../components/CoachGoalCard";
 import { opportunities, studentProfile } from "../data/mockData";
 import { getCoachHistory, getCoachSummary } from "../services/coachService";
 
@@ -91,7 +92,7 @@ export default function Dashboard() {
             </div>
 
             <aside className="space-y-6">
-              <GoalCard coach={coach} />
+              <CoachGoalCard suggestedGoal={coach?.goal || ""} />
               <ScoreBreakdown coach={coach} />
               <ProfileCard />
             </aside>
@@ -263,17 +264,6 @@ function CareerHistoryPanel({ coach, history, loading, error }) {
 
 function StatusCard({ icon: Icon, title, spin = false, children }) {
   return <div className="rounded-[2rem] border border-black/5 bg-white p-8"><Icon className={spin ? "animate-spin" : ""} /><h2 className="mt-4 text-2xl font-black">{title}</h2><p className="mt-2 font-medium leading-7 text-zinc-500">{children}</p></div>;
-}
-
-function GoalCard({ coach }) {
-  return (
-    <div className="rounded-[2rem] bg-black p-6 text-white shadow-[0_35px_120px_rgba(0,0,0,0.25)]">
-      <p className="text-sm font-black uppercase tracking-wider text-[#ffd500]">Objetivo profesional</p>
-      <h3 className="mt-3 text-3xl font-black">{coach?.goal || "Configura tu objetivo"}</h3>
-      <p className="mt-2 font-medium text-zinc-400">Nivel actual: {coach?.current_level || "Sin definir"}</p>
-      <Link to="/career-roadmap" className="mt-6 block rounded-full bg-[#ffd500] px-5 py-3 text-center text-sm font-black text-black">Abrir roadmap</Link>
-    </div>
-  );
 }
 
 function ScoreBreakdown({ coach }) {
