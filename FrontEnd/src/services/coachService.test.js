@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { buildCoachPayload } from "./coachService";
+import { buildCoachPayload, getCoachHistory } from "./coachService";
 
 function createStorage() {
   const values = new Map();
@@ -13,10 +13,11 @@ function createStorage() {
   };
 }
 
-describe("buildCoachPayload", () => {
+describe("coachService", () => {
   beforeEach(() => {
     vi.stubGlobal("localStorage", createStorage());
     vi.stubGlobal("sessionStorage", createStorage());
+    vi.restoreAllMocks();
   });
 
   it("normaliza el usuario y el resultado del onboarding", () => {
@@ -37,5 +38,22 @@ describe("buildCoachPayload", () => {
     expect(payload.profile.target_role).toBe("QA Automation Engineer");
     expect(payload.profile.skills).toEqual(["Python", "Git"]);
     expect(payload.profile.required_skills).toContain("Playwright");
+  });
+
+  it("normaliza un historial envuelto en items", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ items: [{ career_score: 72 }] }),
+      }),
+    );
+
+    const history = await getCoachHistory({ userId: "25", limit: 6 });
+
+    expect(history).toEqual([{ career_score: 72 }]);
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/coach/history?user_id=25&limit=6"),
+    );
   });
 });
