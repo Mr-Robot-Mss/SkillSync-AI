@@ -3,8 +3,10 @@ import logging
 import requests
 from fastapi import APIRouter, HTTPException, Query
 
+from app.repositories.coach_goal_repository import coach_goal_repository
 from app.repositories.coach_history_repository import coach_history_repository
 from app.schemas.coach import CoachSummaryRequest, CoachSummaryResponse
+from app.schemas.coach_goal import CoachGoalResponse, CoachGoalUpsertRequest
 from app.services.coach_engine import build_coach_summary
 
 
@@ -24,8 +26,6 @@ def coach_summary(payload: CoachSummaryRequest):
     try:
         coach_history_repository.save(summary)
     except (requests.RequestException, ValueError, TypeError) as error:
-        # El cálculo principal no debe fallar si Supabase está temporalmente
-        # indisponible. El error queda registrado para observabilidad.
         logger.warning("No fue posible guardar el historial del coach: %s", error)
 
     return summary
@@ -46,3 +46,27 @@ def coach_history(
             status_code=503,
             detail="No fue posible consultar el historial del AI Career Coach",
         ) from error
+
+
+@router.get("/goal", response_model=CoachGoalResponse | None)
+def get_coach_goal(user_id: str = Query(default="demo-user", min_length=1)):
+    try:
+        return coach_goal_repository.get_active(user_id)
+    except requests.RequestException as error:
+        raise HTTPException(
+            status_code=503,
+            detail="No fue posible consultar la meta profesional",
+        ) from error
+
+
+@router.put("/goal", response_model=CoachGoalResponse)
+def save_coach_goal(payload: CoachGoalUpsertRequest):
+    try:
+        return coach_goal_repository.upsert(payload)
+    except requests.RequestException as error:
+        raise HTTPException(
+            status_code=503,
+            detail="No fue posible guardar la meta profesional",
+        ) from error
+    except ValueError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
