@@ -1,30 +1,55 @@
+import { useEffect, useState } from "react";
 import {
+  ArrowRight,
   BriefcaseBusiness,
   Building2,
   ChevronRight,
+  CircleAlert,
+  LoaderCircle,
   Sparkles,
   Target,
   TrendingUp,
   Users,
 } from "lucide-react";
-
 import { Link } from "react-router-dom";
-
 import {
-  AreaChart,
   Area,
+  AreaChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  ResponsiveContainer,
 } from "recharts";
 
 import AppSidebar from "../components/AppSidebar";
 import AppTopbar from "../components/AppTopbar";
-
 import { opportunities, studentProfile } from "../data/mockData";
+import { getCoachSummary } from "../services/coachService";
 
 export default function Dashboard() {
+  const [coach, setCoach] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    getCoachSummary()
+      .then((data) => {
+        if (active) setCoach(data);
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <main className="min-h-screen bg-[#f5f5f3] text-black mesh-bg pb-28 lg:pb-0">
       <AppSidebar />
@@ -32,23 +57,24 @@ export default function Dashboard() {
       <section className="lg:ml-[290px]">
         <AppTopbar
           title="Dashboard Estudiante"
-          subtitle="Career DNA, oportunidades y progreso profesional"
+          subtitle="Tu copiloto de carrera profesional"
         />
 
         <div className="p-6 lg:p-10">
-          <Hero />
+          <CoachHero coach={coach} loading={loading} error={error} />
 
           <section className="mt-8 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_370px]">
             <div className="space-y-6">
-              <Metrics />
-              <AnalyticsPanel />
+              <Metrics coach={coach} />
+              <CoachRecommendations coach={coach} loading={loading} error={error} />
+              <AnalyticsPanel coach={coach} />
               <OpportunitiesSection />
             </div>
 
             <aside className="space-y-6">
+              <GoalCard coach={coach} />
+              <ScoreBreakdown coach={coach} />
               <ProfileCard />
-              <SkillsCard />
-              <RoadmapCard />
             </aside>
           </section>
         </div>
@@ -57,7 +83,10 @@ export default function Dashboard() {
   );
 }
 
-function Hero() {
+function CoachHero({ coach, loading, error }) {
+  const score = coach?.career_score ?? studentProfile.careerScore;
+  const insight = coach?.daily_insight;
+
   return (
     <section className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-black via-[#111111] to-[#1a1a1a] p-8 text-white shadow-[0_40px_120px_rgba(0,0,0,0.28)] lg:p-10">
       <div className="yellow-glow absolute right-0 top-0 h-[450px] w-[450px] rounded-full bg-[#ffd500]/30 blur-3xl" />
@@ -66,74 +95,71 @@ function Hero() {
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm font-black text-[#ffd500]">
             <Sparkles size={15} />
-            IA Predictiva Activa
+            AI Career Coach
           </div>
 
           <h2 className="mt-7 text-5xl font-black leading-[0.92] tracking-[-0.06em] lg:text-7xl">
-            Bienvenida, {studentProfile.name.split(" ")[0]}.
+            Hola, {studentProfile.name.split(" ")[0]}.
           </h2>
 
           <p className="mt-6 max-w-2xl text-lg font-medium leading-8 text-zinc-300">
-            Tu perfil aumentó un 12% en compatibilidad laboral esta semana.
-            Detectamos nuevas oportunidades alineadas a React, SQL y Testing.
+            {loading
+              ? "Estoy analizando tu perfil, tus habilidades y tu progreso profesional."
+              : error
+                ? "No pude actualizar tu análisis. Puedes seguir usando el dashboard mientras lo intentamos nuevamente."
+                : insight}
           </p>
 
           <div className="mt-9 flex flex-wrap gap-4">
             <Link
-              to="/profile"
+              to="/career-roadmap"
               className="rounded-full bg-[#ffd500] px-6 py-4 font-black text-black"
             >
-              Ver perfil completo
+              Ver siguiente paso
             </Link>
-
             <Link
               to="/market"
               className="rounded-full border border-white/10 bg-white/10 px-6 py-4 font-black transition hover:bg-[#ffd500] hover:text-black"
             >
-              Ver Market Pulse
+              Explorar oportunidades
             </Link>
           </div>
         </div>
 
         <div className="rounded-[2rem] bg-white p-6 text-black shadow-2xl">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-bold text-zinc-500">Career DNA</p>
-              <h3 className="mt-1 text-3xl font-black">
-                {studentProfile.careerScore}%
-              </h3>
-            </div>
-
-            <div className="rounded-2xl bg-[#ffd500] px-4 py-3 text-center">
-              <p className="text-2xl font-black">
-                {studentProfile.employability}%
-              </p>
-              <p className="text-[10px] font-black uppercase">
-                empleabilidad
-              </p>
-            </div>
+          <p className="text-sm font-bold text-zinc-500">Career Score</p>
+          <div className="mt-2 flex items-end justify-between gap-4">
+            <h3 className="text-6xl font-black tracking-tight">{score}%</h3>
+            {loading && <LoaderCircle className="mb-2 animate-spin" size={26} />}
           </div>
-
           <div className="mt-6">
-            <SkillLine label="Frontend Development" value={92} />
-            <SkillLine label="SQL & Data" value={81} />
-            <SkillLine label="Testing" value={64} />
+            <Progress value={score} />
           </div>
+          <p className="mt-4 text-sm font-semibold leading-6 text-zinc-500">
+            {coach
+              ? `Objetivo actual: ${coach.goal}`
+              : "Tu puntuación se actualizará con la información real de tu perfil."}
+          </p>
         </div>
       </div>
     </section>
   );
 }
 
-function Metrics() {
+function Metrics({ coach }) {
+  const breakdown = coach?.score_breakdown;
+  const score = coach?.career_score ?? studentProfile.careerScore;
+
+  const metrics = [
+    [Target, `${score}%`, "Career Score"],
+    [Users, `${breakdown?.profile ?? 0}%`, "Perfil"],
+    [BriefcaseBusiness, `${breakdown?.cv ?? 0}%`, "CV ATS"],
+    [TrendingUp, `${breakdown?.skills ?? 0}%`, "Skills objetivo"],
+  ];
+
   return (
     <div className="grid gap-5 md:grid-cols-4">
-      {[
-        [Users, "12", "Postulaciones"],
-        [Target, `${studentProfile.careerScore}%`, "Career Score"],
-        [BriefcaseBusiness, "8", "Entrevistas"],
-        [TrendingUp, "+12%", "Crecimiento"],
-      ].map(([Icon, value, label]) => (
+      {metrics.map(([Icon, value, label]) => (
         <div
           key={label}
           className="glow-card rounded-[2rem] border border-black/5 bg-white p-6"
@@ -141,8 +167,7 @@ function Metrics() {
           <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#ffd500]">
             <Icon />
           </div>
-
-          <h3 className="text-5xl font-black tracking-tight">{value}</h3>
+          <h3 className="text-4xl font-black tracking-tight">{value}</h3>
           <p className="mt-2 font-semibold text-zinc-500">{label}</p>
         </div>
       ))}
@@ -150,73 +175,155 @@ function Metrics() {
   );
 }
 
-function AnalyticsPanel() {
+function CoachRecommendations({ coach, loading, error }) {
+  if (loading) {
+    return (
+      <StatusCard icon={LoaderCircle} title="Preparando tus recomendaciones" spin>
+        Estamos calculando las acciones con mayor impacto para tu objetivo profesional.
+      </StatusCard>
+    );
+  }
+
+  if (error) {
+    return (
+      <StatusCard icon={CircleAlert} title="No se pudo cargar el coach">
+        {error}
+      </StatusCard>
+    );
+  }
+
+  return (
+    <section className="glow-card rounded-[2rem] border border-black/5 bg-white p-6 lg:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-zinc-400">
+            Plan de acción
+          </p>
+          <h2 className="mt-2 text-3xl font-black tracking-tight">
+            Tus siguientes mejores pasos
+          </h2>
+        </div>
+        <span className="rounded-full bg-black px-4 py-2 text-sm font-black text-[#ffd500]">
+          {coach?.recommendations?.length || 0} recomendaciones
+        </span>
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {(coach?.recommendations || []).map((item) => (
+          <article key={item.id} className="rounded-[1.75rem] bg-zinc-50 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-zinc-400">
+                  Prioridad {item.priority}
+                </span>
+                <h3 className="mt-2 text-xl font-black">{item.title}</h3>
+              </div>
+              <div className="rounded-2xl bg-[#ffd500] px-3 py-2 text-sm font-black">
+                +{item.impact}%
+              </div>
+            </div>
+            <p className="mt-3 font-medium leading-7 text-zinc-600">
+              {item.description}
+            </p>
+            <Link
+              to={item.action_path}
+              className="mt-5 inline-flex items-center gap-2 font-black"
+            >
+              {item.action_label}
+              <ArrowRight size={17} />
+            </Link>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function StatusCard({ icon: Icon, title, spin = false, children }) {
+  return (
+    <div className="rounded-[2rem] border border-black/5 bg-white p-8">
+      <Icon className={spin ? "animate-spin" : ""} />
+      <h2 className="mt-4 text-2xl font-black">{title}</h2>
+      <p className="mt-2 font-medium leading-7 text-zinc-500">{children}</p>
+    </div>
+  );
+}
+
+function AnalyticsPanel({ coach }) {
+  const score = coach?.career_score ?? studentProfile.careerScore;
   const data = [
-    { month: "Ene", match: 62 },
-    { month: "Feb", match: 68 },
-    { month: "Mar", match: 71 },
-    { month: "Abr", match: 77 },
-    { month: "May", match: 84 },
-    { month: "Jun", match: 91 },
+    { month: "Inicio", match: Math.max(0, score - 24) },
+    { month: "Perfil", match: Math.max(0, score - 16) },
+    { month: "Skills", match: Math.max(0, score - 10) },
+    { month: "Roadmap", match: Math.max(0, score - 5) },
+    { month: "Actual", match: score },
   ];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-      <div className="glow-card rounded-[2rem] border border-black/5 bg-white p-6">
-        <div className="mb-8 flex items-start justify-between">
-          <div>
-            <h3 className="text-2xl font-black tracking-tight">
-              Evolución de compatibilidad
-            </h3>
-            <p className="mt-1 font-medium text-zinc-500">
-              Progreso del perfil profesional durante los últimos meses.
-            </p>
-          </div>
-
-          <span className="rounded-full bg-[#ffd500] px-4 py-2 text-sm font-black">
-            +29%
-          </span>
-        </div>
-
-        <div className="h-[280px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data}>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} />
-              <YAxis axisLine={false} tickLine={false} />
-              <Tooltip />
-              <Area
-                type="monotone"
-                dataKey="match"
-                stroke="#101010"
-                fill="#ffd500"
-                strokeWidth={3}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+    <div className="glow-card rounded-[2rem] border border-black/5 bg-white p-6">
+      <h3 className="text-2xl font-black tracking-tight">Evolución profesional</h3>
+      <p className="mt-1 font-medium text-zinc-500">
+        Visualización del avance acumulado hacia tu objetivo.
+      </p>
+      <div className="mt-6 h-[280px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data}>
+            <XAxis dataKey="month" axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
+            <Tooltip />
+            <Area
+              type="monotone"
+              dataKey="match"
+              stroke="#101010"
+              fill="#ffd500"
+              strokeWidth={3}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
+    </div>
+  );
+}
 
-      <div className="rounded-[2rem] bg-black p-6 text-white shadow-[0_35px_120px_rgba(0,0,0,0.22)]">
-        <h3 className="text-2xl font-black text-[#ffd500]">
-          Actividad reciente
-        </h3>
+function GoalCard({ coach }) {
+  return (
+    <div className="rounded-[2rem] bg-black p-6 text-white shadow-[0_35px_120px_rgba(0,0,0,0.25)]">
+      <p className="text-sm font-black uppercase tracking-wider text-[#ffd500]">
+        Objetivo profesional
+      </p>
+      <h3 className="mt-3 text-3xl font-black">
+        {coach?.goal || "Configura tu objetivo"}
+      </h3>
+      <p className="mt-2 font-medium text-zinc-400">
+        Nivel actual: {coach?.current_level || "Sin definir"}
+      </p>
+      <Link
+        to="/career-roadmap"
+        className="mt-6 block rounded-full bg-[#ffd500] px-5 py-3 text-center text-sm font-black text-black"
+      >
+        Abrir roadmap
+      </Link>
+    </div>
+  );
+}
 
-        <div className="mt-6 space-y-4">
-          {[
-            ["IA actualizó tu Career DNA", "Hace 4 min"],
-            ["Nueva empresa compatible detectada", "Hace 18 min"],
-            ["Tu CV mejoró su score ATS", "Hoy"],
-            ["Nueva brecha: Testing automatizado", "Ayer"],
-          ].map(([title, time]) => (
-            <div
-              key={title}
-              className="rounded-2xl border border-white/10 bg-white/10 p-4"
-            >
-              <p className="font-black">{title}</p>
-              <p className="mt-1 text-sm text-zinc-400">{time}</p>
-            </div>
-          ))}
-        </div>
+function ScoreBreakdown({ coach }) {
+  const breakdown = coach?.score_breakdown || {};
+  const items = [
+    ["Perfil", breakdown.profile || 0],
+    ["Habilidades", breakdown.skills || 0],
+    ["Roadmap", breakdown.roadmap || 0],
+    ["CV", breakdown.cv || 0],
+    ["Actividad", breakdown.activity || 0],
+  ];
+
+  return (
+    <div className="glow-card rounded-[2rem] border border-black/5 bg-white p-6">
+      <h3 className="text-2xl font-black tracking-tight">Composición del score</h3>
+      <div className="mt-6 space-y-5">
+        {items.map(([label, value]) => (
+          <SkillLine key={label} label={label} value={value} />
+        ))}
       </div>
     </div>
   );
@@ -231,18 +338,20 @@ function OpportunitiesSection() {
             Oportunidades recomendadas
           </h2>
           <p className="mt-1 font-medium text-zinc-500">
-            Matching laboral basado en IA y habilidades reales.
+            Matching laboral basado en habilidades y objetivo profesional.
           </p>
         </div>
-
-        <button className="hidden rounded-full bg-black px-5 py-3 text-sm font-black text-[#ffd500] md:block">
+        <Link
+          to="/market"
+          className="hidden rounded-full bg-black px-5 py-3 text-sm font-black text-[#ffd500] md:block"
+        >
           Ver todas
-        </button>
+        </Link>
       </div>
 
       <div className="space-y-5">
         {opportunities.map((job) => (
-          <OpportunityCard key={job.company} job={job} />
+          <OpportunityCard key={`${job.company}-${job.role}`} job={job} />
         ))}
       </div>
     </div>
@@ -251,42 +360,32 @@ function OpportunitiesSection() {
 
 function OpportunityCard({ job }) {
   return (
-    <article className="glow-card rounded-[2rem] border border-black/5 bg-white p-6 transition duration-300 hover:-translate-y-2 hover:scale-[1.01]">
+    <article className="glow-card rounded-[2rem] border border-black/5 bg-white p-6 transition duration-300 hover:-translate-y-1">
       <div className="flex flex-wrap justify-between gap-6">
         <div>
           <div className="mb-4 flex gap-2">
             <Pill>{job.type}</Pill>
             <Pill>{job.salary}</Pill>
           </div>
-
           <h3 className="text-2xl font-black tracking-tight">{job.role}</h3>
-
           <p className="mt-2 flex items-center gap-2 font-medium text-zinc-500">
             <Building2 size={16} />
             {job.company}
           </p>
         </div>
-
         <div className="min-w-[110px] rounded-[1.5rem] bg-black px-5 py-4 text-center text-[#ffd500]">
           <h3 className="text-4xl font-black">{job.match}%</h3>
-          <p className="text-[11px] font-black uppercase tracking-wider">
-            match
-          </p>
+          <p className="text-[11px] font-black uppercase tracking-wider">match</p>
         </div>
       </div>
-
-      <div className="mt-6 rounded-2xl border-l-4 border-[#ffd500] bg-zinc-50 p-5">
-        <p className="font-medium leading-7 text-zinc-700">
-          La IA detectó alta compatibilidad entre tu stack actual y esta
-          oportunidad laboral.
-        </p>
-      </div>
-
       <div className="mt-6 flex justify-end">
-        <button className="flex items-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-black text-[#ffd500]">
+        <Link
+          to="/market"
+          className="flex items-center gap-2 rounded-full bg-black px-5 py-3 text-sm font-black text-[#ffd500]"
+        >
           Ver oportunidad
           <ChevronRight size={16} />
-        </button>
+        </Link>
       </div>
     </article>
   );
@@ -294,78 +393,27 @@ function OpportunityCard({ job }) {
 
 function ProfileCard() {
   return (
-    <div className="rounded-[2rem] bg-black p-6 text-white shadow-[0_35px_120px_rgba(0,0,0,0.25)]">
+    <div className="glow-card rounded-[2rem] border border-black/5 bg-white p-6">
       <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#ffd500] text-2xl font-black text-black">
         {studentProfile.initials}
       </div>
-
       <h3 className="mt-5 text-3xl font-black">{studentProfile.name}</h3>
-
-      <p className="mt-1 font-medium text-zinc-400">
+      <p className="mt-1 font-medium text-zinc-500">
         {studentProfile.career} · {studentProfile.institution}
       </p>
-
-      <div className="mt-6">
-        <Link
-          to="/profile"
-          className="block rounded-full bg-[#ffd500] px-5 py-3 text-center text-sm font-black text-black"
-        >
-          Ver perfil completo
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function SkillsCard() {
-  return (
-    <div className="glow-card rounded-[2rem] border border-black/5 bg-white p-6">
-      <h3 className="text-2xl font-black tracking-tight">Skills IA</h3>
-
-      <div className="mt-6 flex flex-wrap gap-3">
-        {["React", "SQL", "JavaScript", "Tailwind", "Testing", "Python", "Power BI"].map(
-          (skill) => (
-            <div
-              key={skill}
-              className="rounded-full bg-zinc-100 px-4 py-3 text-sm font-black"
-            >
-              {skill}
-            </div>
-          )
-        )}
-      </div>
-    </div>
-  );
-}
-
-function RoadmapCard() {
-  return (
-    <div className="glow-card rounded-[2rem] border border-black/5 bg-white p-6">
-      <h3 className="text-2xl font-black tracking-tight">Roadmap IA</h3>
-
-      <div className="mt-6 space-y-4">
-        {[
-          "Completar Testing automatizado",
-          "Publicar portfolio React",
-          "Practicar entrevistas técnicas",
-          "Subir nivel de inglés",
-        ].map((item, index) => (
-          <div key={item} className="flex gap-4 rounded-2xl bg-zinc-50 p-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#ffd500] font-black">
-              {index + 1}
-            </div>
-
-            <p className="font-medium leading-7 text-zinc-700">{item}</p>
-          </div>
-        ))}
-      </div>
+      <Link
+        to="/profile"
+        className="mt-6 block rounded-full bg-black px-5 py-3 text-center text-sm font-black text-[#ffd500]"
+      >
+        Ver perfil completo
+      </Link>
     </div>
   );
 }
 
 function SkillLine({ label, value }) {
   return (
-    <div className="mt-5 first:mt-0">
+    <div>
       <div className="mb-2 flex justify-between text-sm font-bold">
         <span>{label}</span>
         <span>{value}%</span>
@@ -384,9 +432,11 @@ function Pill({ children }) {
 }
 
 function Progress({ value }) {
+  const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+
   return (
     <div className="h-2 overflow-hidden rounded-full bg-zinc-200">
-      <div className="h-full bg-[#ffd500]" style={{ width: `${value}%` }} />
+      <div className="h-full bg-[#ffd500]" style={{ width: `${safeValue}%` }} />
     </div>
   );
 }
