@@ -23,15 +23,13 @@ def _parse_response(response: requests.Response):
     return data
 
 
-@router.post("/summary")
-async def coach_summary(request: Request):
-    body = await request.json()
-
+def _request(method: str, path: str, **kwargs):
     try:
-        response = requests.post(
-            f"{settings.career_ai_service_url}/api/coach/summary",
-            json=body,
+        response = requests.request(
+            method=method,
+            url=f"{settings.career_ai_service_url}/api/coach/{path}",
             timeout=30,
+            **kwargs,
         )
     except requests.exceptions.Timeout as error:
         raise HTTPException(
@@ -47,26 +45,28 @@ async def coach_summary(request: Request):
     return _parse_response(response)
 
 
+@router.post("/summary")
+async def coach_summary(request: Request):
+    return _request("POST", "summary", json=await request.json())
+
+
 @router.get("/history")
 def coach_history(
     user_id: str = Query(default="demo-user", min_length=1),
     limit: int = Query(default=12, ge=1, le=52),
 ):
-    try:
-        response = requests.get(
-            f"{settings.career_ai_service_url}/api/coach/history",
-            params={"user_id": user_id, "limit": limit},
-            timeout=30,
-        )
-    except requests.exceptions.Timeout as error:
-        raise HTTPException(
-            status_code=504,
-            detail="Tiempo de espera agotado al consultar el historial del coach",
-        ) from error
-    except requests.exceptions.RequestException as error:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudo conectar con AI Career Coach: {error}",
-        ) from error
+    return _request(
+        "GET",
+        "history",
+        params={"user_id": user_id, "limit": limit},
+    )
 
-    return _parse_response(response)
+
+@router.get("/goal")
+def get_coach_goal(user_id: str = Query(default="demo-user", min_length=1)):
+    return _request("GET", "goal", params={"user_id": user_id})
+
+
+@router.put("/goal")
+async def save_coach_goal(request: Request):
+    return _request("PUT", "goal", json=await request.json())
